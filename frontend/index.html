@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Smart Task Analyzer</title>
+
+  <!-- Poppins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <!-- vis-network for dependency graph -->
+  <link rel="stylesheet" href="https://unpkg.com/vis-network/styles/vis-network.min.css" />
+  <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <div class="container">
+    <h1>Smart Task Analyzer</h1>
+
+    <!-- ROW 1: Add Task | Bulk JSON -->
+    <section class="row-forms">
+      <div class="card form-card">
+        <h2><i class="fa-regular fa-square-plus" style="margin-right: 5px;"></i> Add Task</h2>
+
+        <div id="singleForm">
+          <label class="label">Title</label>
+          <input id="title" type="text" placeholder="Fix login bug" />
+
+          <div class="row">
+            <div>
+              <label class="label">Due date</label>
+              <input id="due_date" type="date" />
+            </div>
+            <div>
+              <label class="label">Estimated hours</label>
+              <input id="estimated_hours" type="number" min="0" step="0.5" placeholder="3" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label class="label">Importance (1-10)</label>
+              <input id="importance" type="number" min="1" max="10" value="5" />
+            </div>
+            <div>
+              <label class="label">Dependencies (comma-separated IDs)</label>
+              <input id="dependencies" type="text" placeholder="1,3" />
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn" id="addTaskBtn">Add Task</button>
+            <button class="btn btn-ghost" id="clearForm">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card bulk-card">
+        <h2><i class="fa-solid fa-code" style="margin-right: 5px;"></i> Bulk JSON Input</h2>
+        <p class="muted">Paste an array of tasks (example below). Use double quotes for valid JSON.</p>
+
+        <label class="label" for="bulkJSON">Bulk JSON</label>
+        <textarea id="bulkJSON" placeholder='[
+  {
+    "title": "Fix login bug",
+    "due_date": "2025-11-30",
+    "estimated_hours": 3,
+    "importance": 8,
+    "dependencies": []
+  }
+]'></textarea>
+
+        <div class="bulk-row">
+          <div style="margin-left:auto" class="bulk-actions">
+            <button class="btn primary" id="analyzeBtn"><i class="fa-solid fa-magnifying-glass-chart"
+                style="margin-right: 5px;"></i>Analyze Tasks</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ROW 2: Results | Top Suggestions -->
+    <section class="row-results">
+      <div class="card results-card">
+        <div class="results-head">
+          <h2><i class="fa-solid fa-square-poll-vertical" style="margin-right: 5px;"></i>Results</h2>
+          <div class="controls-inline">
+            <label for="modeSelect" class="visually-hidden">Mode</label>
+            <select id="modeSelect" class="mode-select">
+              <option value="smart">Smart Balance</option>
+              <option value="fast">Fastest Wins</option>
+              <option value="impact">High Impact</option>
+              <option value="deadline">Deadline Driven</option>
+            </select>
+
+            <div id="loading" class="loading" aria-hidden="true"><span class="spinner"></span></div>
+          </div>
+        </div>
+
+        <div id="results" class="results-list" aria-live="polite"></div>
+        <div class="footer">Use the top dropdown to change sorting strategy.</div>
+      </div>
+
+      <div class="card suggestions-card">
+        <h2><i class="fa-solid fa-lightbulb" style="margin-right: 5px;"></i>Top Suggestions</h2>
+        <p class="muted">Click to view top 3 based on score.</p>
+
+        <div class="btn-row" style="margin-top:10px">
+          <button class="btn" id="top3Btn"><i class="fa-solid fa-ranking-star" style="margin-right: 5px;"></i>Show Top
+            3</button>
+          <button class="btn btn-ghost" id="exportJSON"><i class="fa-solid fa-file-export"
+              style="margin-right: 5px;"></i>Export JSON</button>
+        </div>
+
+        <div id="top3" style="margin-top:12px"></div>
+
+        <hr style="margin:14px 0">
+
+        <h3>Explanation</h3>
+        <p class="small muted">
+          <strong>Urgency:</strong> Days left to due date.<br />
+          <strong>Importance:</strong> User rating 1–10.<br />
+          <strong>Effort:</strong> Lower effort → higher score.<br />
+          <strong>Dependencies:</strong> More dependencies → higher priority.
+        </p>
+      </div>
+    </section>
+  </div>
+  <!-- Dependency Graph UI -->
+    <div class="card" id="dependencyCard" style="margin-top:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h2 style="margin:0"><i class="fa-solid fa-sitemap"></i> Dependency Graph</h2>
+      </div>
+
+      <div id="graphLegend" class="muted" style="margin-top:8px; font-size:13px;">
+        • Red edges/nodes = part of a circular dependency. • Click node for details.
+      </div>
+
+      <div id="graphContainer"
+        style="height:340px;margin-top:10px;border-radius:10px;border:1px solid rgba(15,23,42,0.04);overflow:hidden;display:block">
+      </div>
+    </div>
+  <footer id="footerInfo" class="footer-info"> <i class="fa-solid fa-code-branch" style="margin-right: 5px;"></i>
+    Built for the Singularium Internship Assignment — Task Analyzer · 2025
+  </footer>
+
+
+  <div id="toastcontainer" hidden></div>
+  <script src="script.js"></script>
+  <script src="https://kit.fontawesome.com/7cb97bdf64.js" crossorigin="anonymous"></script>
+</body>
+
+</html>
